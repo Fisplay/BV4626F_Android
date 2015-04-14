@@ -16,12 +16,16 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
+import android.os.Handler;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class BVCtrl {
@@ -40,6 +44,9 @@ public class BVCtrl {
     private boolean cmdRunning = false;
     private boolean connected = false;
     private int inputs = 0;
+
+    private Thread thread;
+    private Handler handler = new Handler();
 
     public interface Event {
       void InputChange(Integer ret);
@@ -99,7 +106,7 @@ public class BVCtrl {
         l("Trying to connect");
         this.sDevice = d;
         this.sConn = this.usbman.openDevice(this.sDevice);
-        l("Using "+String.format("%04X:%04X", this.sDevice.getVendorId(), this.sDevice.getProductId()));
+        l("Using " + String.format("%04X:%04X", this.sDevice.getVendorId(), this.sDevice.getProductId()));
 
         //Selvitetään interface, jos ei löydy, yritetään myöhemmin uudelleen (Broadcast receiver)
         if(!this.sConn.claimInterface(this.sDevice.getInterface(0), true))
@@ -134,34 +141,21 @@ public class BVCtrl {
 
         this.run();
 
+
+
         //Starting "read loop"
-        new Thread(new Runnable() {
+        thread = new Thread() {
             public void run() {
-              while(true)
-                {
-                    readInputs();
-                    try {
-                        Thread.sleep(1000);
-                    } catch(Exception e) {}
-
-
-                }
-
-
+                // do something here
+                readInputs();
+                //Log.d("LOOP", "local Thread sleeping");
+                handler.postDelayed(this, 200);
             }
-
-        }).start();
+        };
+        handler.postDelayed(thread, 0);
     }
 
     public void write(String cmd) {
-        /*while(this.cmdRunning==true) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-           l("WAITING");
-        }*/
         this.cmdBuffer.add(cmd);
         this.run();
     }
@@ -169,8 +163,6 @@ public class BVCtrl {
     protected void run() {
        if(this.cmdRunning || this.connected==false || cmdBuffer.size()==0)
             return;
-
-       //l("RUNNING");
 
        this.cmdRunning = true;
        /*for (Iterator<String> iterator = cmdBuffer.iterator(); iterator.hasNext(); ) {
@@ -180,19 +172,22 @@ public class BVCtrl {
        }*/
        ArrayList<String> remove = new ArrayList<String>();
 
-       for(String cmd : cmdBuffer) {
-        this.runCmd(cmd);
-        remove.add(cmd);
-       }
+       try {
+           for (String cmd : cmdBuffer) {
+               this.runCmd(cmd);
+               remove.add(cmd);
+           }
 
-       cmdBuffer.removeAll(remove);
+           cmdBuffer.removeAll(remove);
+       } catch (ConcurrentModificationException e) {}
+
        this.cmdRunning = false;
 
     }
 
     protected void runCmd(String cmd) {
 
-        l("Writing " + cmd);
+        //l("Writing " + cmd);
         byte[] bCmd = hexStringToByteArray(cmd);
 
         for(byte b: bCmd){//this is the main loop for transferring
@@ -200,45 +195,52 @@ public class BVCtrl {
             //Seems to work without sleep..
             //l("writing " + b);
             try {
-                Thread.sleep(100);
+               Thread.sleep(100);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
 
+
+
         }
 
         //Luetaan vastaus.
-        byte[] buffer = new byte[3];
+        byte[] buffer = new byte[5];
 
         int read;
-        this.sConn.bulkTransfer(this.sEpIn, buffer, 3, 1000);
+        this.sConn.bulkTransfer(this.sEpIn, buffer, 5, 1000);
         //while( != -1) {}
 
 
         StringBuilder sb = new StringBuilder();
         for(byte b : buffer) {
-            if(b!=17 && b!=96)
+            if(b!=17 && b!=96 && b>0) {
+                l(b);
                 sb.append((char) b);
-            l(b);
+            }
 
         }
-        //l(sb.toString());
 
-           //päiviteään inputit
+        //päiviteään inputit
         if(cmd.equalsIgnoreCase(this.escape + "72")) {
             int sbi = this.inputs;
             try {
-                sbi = Integer.parseInt(sb.toString());
+                //l(sb.toString());
+                if(sb.toString()!="")
+                    sbi = Integer.parseInt(sb.toString());
+                else sbi = 0;
+
+                if (this.inputs != sbi) {
+                    this.inputs = sbi;
+                    //l(sbi);
+                    inputChange();
+                }
             } catch (Exception e) {
-                //l("Wrong input! Is channels set right?");
+                l("Wrong input! Is channels set right?" + e.getMessage());
             }
             //l(sbi);
 
-            if (this.inputs != sbi) {
-                this.inputs = sbi;
-                //l(sbi);
-                inputChange();
-            }
+
         }
 
     }
@@ -291,19 +293,25 @@ public class BVCtrl {
     //Need override
     public void inputChange() {
         l("Changed");
-
+        l(this.inputs);
         l("input 1 " + checkInput(1));
         l("input 2 " + checkInput(2));
         l("input 3 " + checkInput(3));
         l("input 4 " + checkInput(4));
+        l("input 5 " + checkInput(5));
+        l("input 6 " + checkInput(6));
+        l("input 7 " + checkInput(7));
+        l("input 8 " + checkInput(8));
+
 
 
     }
 
     public boolean checkInput(int no) {
        double check = Math.pow(2, no-1);
-       l("test " + check);
-       l("test" + ((int) check));
+
+       //l("test " + check);
+       //l("test" + ((int) check));
         //l("checkval1 " + Math.pow((double)no, 2) + " no " + no);
         //l("inputs " + inputs + "check" + check);
         //l("checkval " + check);
