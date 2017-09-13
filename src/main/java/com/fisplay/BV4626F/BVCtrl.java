@@ -144,7 +144,7 @@ public class BVCtrl {
 
 
         //Starting "read loop"
-        thread = new Thread() {
+        /*thread = new Thread() {
             public void run() {
                 // do something here
                 readInputs();
@@ -152,13 +152,15 @@ public class BVCtrl {
                 handler.postDelayed(this, 200);
             }
         };
-        handler.postDelayed(thread, 0);
+        handler.postDelayed(thread, 0);*/
     }
 
     public void write(String cmd) {
+        l("Adding to cmdBuffer "+cmd + " length = " + this.cmdBuffer.size());
         this.cmdBuffer.add(cmd);
         this.run();
     }
+
 
     protected void run() {
        if(this.cmdRunning || this.connected==false || cmdBuffer.size()==0)
@@ -193,7 +195,7 @@ public class BVCtrl {
         for(byte b: bCmd){//this is the main loop for transferring
             this.sConn.bulkTransfer(this.sEpOut, new byte[]{b}, 1, 1000);
             //Seems to work without sleep..
-            //l("writing " + b);
+            l("Writing to port " + b);
             try {
                Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -267,7 +269,7 @@ public class BVCtrl {
 
     public void relay(String r, int status) {
         //l(System.out.printf("%02X", Integer.toHexString(status)));
-        l("Settingr relay " + r + " to " +status);
+        l("Setting relay " + r + " to " +status);
         this.write(this.escape + this.relayStatus.get(status) + this.relays.get(r) );
     }
 
@@ -382,5 +384,7 @@ public class BVCtrl {
         Log.e("FTDI_USB", ">==< " + s.toString() + " >==<");
     }
 
-
+    public int getInputs() {
+        return this.inputs;
+    }
 }
