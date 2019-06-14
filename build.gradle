@@ -2,9 +2,7 @@ apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 18
-    buildToolsVersion '19.1.0'
     defaultConfig {
-        //applicationId 'com.fisplay.BV4626F'
         minSdkVersion 17
         targetSdkVersion 18
         versionCode 1
@@ -21,5 +19,21 @@ android {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    api fileTree(include: ['*.jar'], dir: 'libs')
+}
+
+buildscript {
+    repositories {
+        google() // here
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.2.0-alpha12'
+    }
+}
+allprojects {
+    repositories {
+        google() // and here
+        jcenter()
+    }
 }
