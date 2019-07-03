@@ -115,7 +115,9 @@ public class BVCtrl {
         this.sConn.controlTransfer(0x40, 0, 0, 0, null, 0, 0);//reset
         this.sConn.controlTransfer(0x40, 0, 1, 0, null, 0, 0);//clear Rx
         this.sConn.controlTransfer(0x40, 0, 2, 0, null, 0, 0);//clear Tx
-        this.sConn.controlTransfer(0x40, 0x03, 0x4138, 0, null, 0, 0);//baudrate 9600
+        //this.sConn.controlTransfer(0x40, 0x03, 0x4138, 0, null, 0, 0);//baudrate 9600/
+        this.sConn.controlTransfer(0x40, 0x03, 0x001A, 0, null, 0, 0);//baudrate 115200
+
 
         this.sIf = this.sDevice.getInterface(0);
 
